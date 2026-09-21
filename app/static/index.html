@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Manager</title>
+</head>
+
+<body>
+
+    <h1>Task Manager</h1>
+
+    <form id="task-form">
+        <label for="title">Titre :</label>
+        <input type="text" id="title" required>
+
+        <br><br>
+
+        <label for="description">Description :</label>
+        <input type="text" id="description" required>
+
+        <br><br>
+
+        <button type="submit">Créer</button>
+    </form>
+
+    <hr>
+
+    <h2>Tâche créée</h2>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById("task-form");
+        const result = document.getElementById("result");
+
+        form.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+
+            const response = await fetch("/tasks", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    title: title,
+                    description: description
+                })
+            });
+
+            const task = await response.json();
+
+            result.innerHTML = `
+                <p id="task-result">
+                    ${task.id} -
+                    <strong>${task.title}</strong> -
+                    ${task.description}
+                </p>
+            `;
+
+            form.reset();
+        });
+    </script>
+
+</body>
+</html>

@@ -1,3 +1,4 @@
+from fastapi.responses import FileResponse
 from fastapi import FastAPI, status, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -5,6 +6,10 @@ from sqlalchemy import text
 from app.database import engine
 
 app = FastAPI()
+
+@app.get("/")
+def web_interface():
+    return FileResponse("app/static/index.html")
 
 
 class Task(BaseModel):

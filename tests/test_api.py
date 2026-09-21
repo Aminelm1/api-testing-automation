@@ -85,3 +85,22 @@ def test_create_task_invalid_title():
     )
 
     assert response.status_code == 422
+
+
+def test_update_unknown_task():
+    response = httpx.patch(
+        f"{BASE_URL}/tasks/999999999",
+        json={"completed": True}
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Task not found"
+
+
+def test_delete_unknown_task():
+    response = httpx.delete(
+        f"{BASE_URL}/tasks/999999999"
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Task not found"
