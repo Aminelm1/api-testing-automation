@@ -44,6 +44,7 @@ pipeline {
                     echo "Attente du démarrage de l'API..."
 
                     for i in $(seq 1 30); do
+
                         if curl --fail http://127.0.0.1:8000/health; then
                             echo ""
                             echo "API disponible !"
@@ -52,6 +53,7 @@ pipeline {
 
                         echo "API pas encore disponible..."
                         sleep 2
+
                     done
 
                     echo "L'API n'a pas démarré."
@@ -60,15 +62,40 @@ pipeline {
                 '''
             }
         }
+
+        stage('API & Database Tests') {
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'postgres-password',
+                        variable: 'POSTGRES_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        export TEST_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5433/${POSTGRES_DB}"
+
+                        python3 -m venv .venv-jenkins
+
+                        .venv-jenkins/bin/pip install -r requirements.txt
+
+                        .venv-jenkins/bin/pytest -v \
+                            tests/test_api.py \
+                            tests/test_database.py
+                    '''
+                }
+            }
+        }
     }
 
     post {
+
         success {
-            echo 'Docker + PostgreSQL + API fonctionnent dans Jenkins !'
+            echo 'Pipeline CI terminé avec succès !'
         }
 
         failure {
-            echo 'Pipeline en échec.'
+            echo 'Pipeline CI en échec.'
+            sh 'docker compose logs || true'
         }
     }
 }
