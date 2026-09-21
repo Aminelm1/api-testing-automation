@@ -27,5 +27,13 @@ services:
       db:
         condition: service_healthy
 
+  selenium:
+    image: selenium/standalone-chrome:latest
+    shm_size: 2gb
+    ports:
+      - "4444:4444"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:

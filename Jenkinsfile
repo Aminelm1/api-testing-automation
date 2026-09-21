@@ -86,6 +86,15 @@ pipeline {
             }
         }
     }
+       
+        stage('Selenium Web Test') {
+    steps {
+        sh '''
+            echo "Lancement du test Selenium..."
+            .venv-jenkins/bin/pytest -v tests/test_web.py
+        '''
+    }
+}
 
     post {
 
