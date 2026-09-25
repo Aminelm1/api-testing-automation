@@ -153,7 +153,7 @@ pipeline {
                         -t ${DOCKER_IMAGE}:latest \
                         .
 
-                    echo "Push de l'image version ${BUILD_NUMBER}..."
+                    echo "Push de l'image ${BUILD_NUMBER}..."
 
                     docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
 
@@ -187,10 +187,54 @@ pipeline {
                     kubectl get pods
 
                     echo "Image actuellement utilisée :"
+
                     kubectl get deployment task-api \
                         -o=jsonpath='{.spec.template.spec.containers[0].image}'
 
                     echo ""
+                '''
+            }
+        }
+
+        stage('Kubernetes Health Check') {
+            steps {
+                sh '''
+                    echo "Vérification de l'API dans Kubernetes..."
+
+                    kubectl port-forward service/task-api 8001:8000 \
+                        > /tmp/task-api-port-forward.log 2>&1 &
+
+                    PF_PID=$!
+
+                    cleanup() {
+                        kill $PF_PID 2>/dev/null || true
+                    }
+
+                    trap cleanup EXIT
+
+                    echo "Attente du port-forward..."
+
+                    for i in $(seq 1 15); do
+
+                        if curl --fail http://127.0.0.1:8001/health; then
+                            echo ""
+                            echo "API Kubernetes disponible !"
+                            exit 0
+                        fi
+
+                        echo "API Kubernetes pas encore disponible..."
+                        sleep 2
+                    done
+
+                    echo "ERREUR : API Kubernetes inaccessible."
+
+                    echo "===== Port-forward logs ====="
+                    cat /tmp/task-api-port-forward.log || true
+
+                    echo "===== Pods ====="
+                    kubectl get pods || true
+
+                    exit 1
                 '''
             }
         }
@@ -201,12 +245,13 @@ pipeline {
         success {
             echo '========================================'
             echo 'PIPELINE CI/CD TERMINE AVEC SUCCES'
-            echo 'API Tests       : OK'
-            echo 'Database Tests  : OK'
-            echo 'Selenium Tests  : OK'
-            echo 'Docker Hub      : OK'
-            echo 'Docker Push     : OK'
-            echo 'Kubernetes      : OK'
+            echo 'API Tests          : OK'
+            echo 'Database Tests     : OK'
+            echo 'Selenium Tests     : OK'
+            echo 'Docker Hub Login   : OK'
+            echo 'Docker Build/Push  : OK'
+            echo 'Kubernetes Deploy  : OK'
+            echo 'Kubernetes Health  : OK'
             echo '========================================'
         }
 
