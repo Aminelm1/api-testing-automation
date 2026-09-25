@@ -1,0 +1,37 @@
+---
+- name: Deployer API sur Kubernetes
+  hosts: local
+  gather_facts: false
+
+  vars:
+    docker_image: "aminerayy1/api-testing-automation-api:latest"
+
+  tasks:
+
+    - name: Verifier acces au cluster Kubernetes
+      ansible.builtin.command:
+        cmd: kubectl get nodes
+      changed_when: false
+
+    - name: Mettre a jour l'image de l'API
+      ansible.builtin.command:
+        cmd: >
+          kubectl set image deployment/task-api
+          task-api={{ docker_image }}
+      register: deployment_update
+      changed_when: "'image updated' in deployment_update.stdout"
+
+    - name: Attendre la fin du deploiement
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/task-api --timeout=120s
+      changed_when: false
+
+    - name: Recuperer les pods
+      ansible.builtin.command:
+        cmd: kubectl get pods
+      register: pods
+      changed_when: false
+
+    - name: Afficher les pods
+      ansible.builtin.debug:
+        var: pods.stdout_lines
