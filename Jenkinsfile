@@ -4,6 +4,7 @@ pipeline {
     environment {
         POSTGRES_DB = 'taskdb'
         POSTGRES_USER = 'api_tester'
+        DOCKER_IMAGE = 'aminerayy1/api-testing-automation-api'
     }
 
     stages {
@@ -143,43 +144,74 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
-           steps {
-               script {
-                   sh """
-                      echo "Construction de l'image Docker..."
+            steps {
+                sh '''
+                    echo "Construction de l'image Docker..."
 
-                      docker build \
-                      -t aminerayy1/api-testing-automation-api:${BUILD_NUMBER} \
-                      -t aminerayy1/api-testing-automation-api:latest \
-                      .
+                    docker build \
+                        -t ${DOCKER_IMAGE}:${BUILD_NUMBER} \
+                        -t ${DOCKER_IMAGE}:latest \
+                        .
 
-                      echo "Push de l'image version ${BUILD_NUMBER}..."
-                     docker push aminerayy1/api-testing-automation-api:${BUILD_NUMBER}
+                    echo "Push de l'image version ${BUILD_NUMBER}..."
 
-                     echo "Push de l'image latest..."
-                     docker push aminerayy1/api-testing-automation-api:latest
+                    docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
 
-                     echo "Image Docker publiée avec succès."
-                     """
+                    echo "Push de l'image latest..."
+
+                    docker push ${DOCKER_IMAGE}:latest
+
+                    echo "Images publiées sur Docker Hub."
+                '''
+            }
         }
-    }
-}
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    echo "Déploiement Kubernetes..."
+
+                    echo "Image : ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+
+                    kubectl set image deployment/task-api \
+                        task-api=${DOCKER_IMAGE}:${BUILD_NUMBER}
+
+                    echo "Attente du rollout Kubernetes..."
+
+                    kubectl rollout status deployment/task-api \
+                        --timeout=120s
+
+                    echo "Déploiement Kubernetes réussi."
+
+                    echo "Pods actuellement déployés :"
+                    kubectl get pods
+
+                    echo "Image actuellement utilisée :"
+                    kubectl get deployment task-api \
+                        -o=jsonpath='{.spec.template.spec.containers[0].image}'
+
+                    echo ""
+                '''
+            }
+        }
     }
 
     post {
 
         success {
             echo '========================================'
-            echo 'Pipeline CI terminé avec succès !'
-            echo 'API Tests      : OK'
-            echo 'Database Tests : OK'
-            echo 'Selenium Tests : OK'
-            echo 'Docker Hub     : LOGIN OK'
+            echo 'PIPELINE CI/CD TERMINE AVEC SUCCES'
+            echo 'API Tests       : OK'
+            echo 'Database Tests  : OK'
+            echo 'Selenium Tests  : OK'
+            echo 'Docker Hub      : OK'
+            echo 'Docker Push     : OK'
+            echo 'Kubernetes      : OK'
             echo '========================================'
         }
 
         failure {
-            echo 'Pipeline CI en échec.'
+            echo 'Pipeline CI/CD en échec.'
 
             sh '''
                 echo "===== Docker containers ====="
@@ -187,12 +219,21 @@ pipeline {
 
                 echo "===== Docker logs ====="
                 docker compose logs || true
+
+                echo "===== Kubernetes pods ====="
+                kubectl get pods || true
+
+                echo "===== Kubernetes deployment ====="
+                kubectl get deployment task-api || true
             '''
         }
 
         always {
-            echo 'Nettoyage des conteneurs...'
-            sh 'docker compose down || true'
+            echo 'Nettoyage des conteneurs Docker Compose...'
+
+            sh '''
+                docker compose down || true
+            '''
         }
     }
 }
