@@ -142,6 +142,28 @@ pipeline {
             }
         }
 
+        stage('Docker Build & Push') {
+           steps {
+               script {
+                   sh """
+                      echo "Construction de l'image Docker..."
+
+                      docker build \
+                      -t aminerayy1/api-testing-automation-api:${BUILD_NUMBER} \
+                      -t aminerayy1/api-testing-automation-api:latest \
+                      .
+
+                      echo "Push de l'image version ${BUILD_NUMBER}..."
+                     docker push aminerayy1/api-testing-automation-api:${BUILD_NUMBER}
+
+                     echo "Push de l'image latest..."
+                     docker push aminerayy1/api-testing-automation-api:latest
+
+                     echo "Image Docker publiée avec succès."
+                     """
+        }
+    }
+}
     }
 
     post {

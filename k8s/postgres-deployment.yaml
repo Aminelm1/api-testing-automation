@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
+
 spec:
   replicas: 1
 
@@ -36,10 +37,21 @@ spec:
                   key: POSTGRES_PASSWORD
 
           volumeMounts:
+            # Script SQL exécuté lors de l'initialisation
             - name: init-script
               mountPath: /docker-entrypoint-initdb.d
 
+            # Données PostgreSQL persistantes
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+
       volumes:
+        # init.sql provenant du ConfigMap postgres-init
         - name: init-script
           configMap:
             name: postgres-init
+
+        # Stockage persistant PostgreSQL
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
